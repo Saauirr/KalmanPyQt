@@ -10,7 +10,7 @@ Simulation of Kalman filtering of mass-spring-damper systems using OpenMP with C
 
 Development in processor manufacturing technology in the last half-decade allowed one of the few modern chip manufacturers such as Intel to produce very compact in size but can deliver more computing power. Founding fathers of early computers would not even dreamed of in terms of size.
 
-Modern day computers, even laptops which are limited in space for hardware, can be purchased with at least four CPU cores inside. Of course there are higher-end CPU's that have more than four cores. This [CPU](https://www.intel.com/content/www/us/en/products/processors/core/x-series/i9-9980xe.html) from Intel has whopping 16 cores! 
+Modern day computers, even laptops which are limited in space for hardware, can be purchased with at least four CPU cores inside. Of course there are higher-end CPU's that have more than four cores (this [CPU](https://www.intel.com/content/www/us/en/products/processors/core/x-series/i9-9980xe.html) from Intel has whopping 16 cores!).
 By distributing the work to two or more cores, loads can be computed in parallel to speed up the process and as a result, the time it takes to compute can be minimized.
 
 OpenMP is an API(Application Programming Interface) for homogeneous, shared-memory system such as a multi-core processor. For the use on laptops or a single motherboard computers at home, a RAM(Random Access Memory) is an example for such shared-memory. For this project, I will be exploring into a

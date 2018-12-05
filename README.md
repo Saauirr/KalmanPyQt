@@ -47,3 +47,4 @@ L3 cache:            6144K
 NUMA node0 CPU(s):   0-7
 ```
 
+cat /proc/cpuinfo also shows CPU info

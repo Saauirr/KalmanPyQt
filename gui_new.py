@@ -12,6 +12,7 @@ import numpy as np # this has to be imported before the ones in line 11 and 12
 from math import floor
 import control
 import control.matlab as matlab
+import matplotlib.animation as animation
 
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QDialog, QLineEdit, 
                              QVBoxLayout, QAction, QMessageBox, QFileDialog,
@@ -29,7 +30,7 @@ class MainWindow(QMainWindow) :
         super(MainWindow, self).__init__(parent)
         
         # Add an Icon
-        # self.setWindowIcon(QIcon('troll.png'))
+        self.setWindowIcon(QIcon('guiIcon.png'))
 
         #######################################################################
         # ADD MENU ITEMS
@@ -62,12 +63,11 @@ class MainWindow(QMainWindow) :
         
         # Horizontal Time entries
         TimeStep = QLabel('Time Step =')
-        SimLen = QLabel('Final Time =')
+        SimLen = QLabel('   Final Time =')
         unit0 = QLabel('sec. ')
         unit1= QLabel('sec. ')
         self.dtEdit = QLineEdit('0.05')
         self.dtEdit.setFixedWidth(50)
-#        TimeStep.setBuddy(self.dtEdit)
         self.simEdit = QLineEdit('20')
         self.simEdit.setFixedWidth(50)
         
@@ -101,79 +101,43 @@ class MainWindow(QMainWindow) :
         FGrid.addWidget(self.FEdit4, 4, 2, 1, 1)
         
         GGrid = QGridLayout()
-        G = QLabel('G =')
+        G = QLabel('    G =')
         self.GEdit1, self.GEdit2 = QLineEdit('0.0'), QLineEdit('1/m')
         self.GEdit1.setFixedWidth(40)
         self.GEdit2.setFixedWidth(40)
         GGrid.addWidget(G, 3, 3)
         GGrid.addWidget(self.GEdit1, 3, 4)
         GGrid.addWidget(self.GEdit2, 4, 4)
-        
-        
-        grid = QGridLayout()
-#        TimeStep = QLabel('Time Step =')
-#        SimLen = QLabel('Final Time =')
-#        self.dtEdit = QLineEdit('0.05')
-#        self.dtEdit.setFixedWidth(50)
-#        TimeStep.setBuddy(self.dtEdit)
-#        self.simEdit = QLineEdit('20')
-#        self.simEdit.setFixedWidth(50)
-#        mass = QLabel('Mass =')
-#        Ks = QLabel('Ks =')
-#        Kd = QLabel('Kd =')
-#        self.massEdit = QLineEdit('1')
-#        self.KsEdit = QLineEdit('4')
-##        self.KdEdit = QLineEdit('1')
-#        F = QLabel('F =')
-#        G = QLabel('G =')
-#        self.FEdit1, self.FEdit2 = QLineEdit('0.0'), QLineEdit('1.0')
-#        self.FEdit3, self.FEdit4 = QLineEdit('-Ks/m'), QLineEdit('-Kd/m')
-#        self.GEdit1, self.GEdit2 = QLineEdit('0.0'), QLineEdit('1/m')
-        distNoise = QLabel('Disturbance Cov. =')
+
+        distNoise = QLabel('  Disturbance Cov. =')
         self.distNoiseEdit = QLineEdit('0.0005')
+        self.distNoiseEdit.setFixedWidth(80)
+        distNoise.setBuddy(self.distNoiseEdit)
         AccelNoise = QLabel('Accel. Meas. Noise =')
         self.AccelNoiseEdit = QLineEdit('0.02')
-        measNoise = QLabel('Meas. Noise =')
+        self.AccelNoiseEdit.setFixedWidth(80)
+        measNoise = QLabel('          Meas. Noise =')
         self.measNoiseEdit = QLineEdit('0.001')
-        inputSignal = QLabel('Input =')
+        self.measNoiseEdit.setFixedWidth(80)
+        inputSignal = QLabel('Input Signal =')
         self.inputSignalEdit = QLineEdit('10*np.sin(2*np.pi*0.05*t)')
 
-#        grid.addWidget(TimeStep, 1, 0)
-#        grid.addWidget(self.dtEdit, 1, 1)
-#        grid.addWidget(SimLen, 1, 4)
-#        grid.addWidget(self.simEdit, 1, 5)
-#        grid.addWidget(mass, 2, 0)
-#        grid.addWidget(self.massEdit, 2, 1)
-#        grid.addWidget(Ks, 2, 2)
-#        grid.addWidget(self.KsEdit, 2, 3)
-#        grid.addWidget(Kd, 2, 4)
-#        grid.addWidget(self.KdEdit, 2, 5)
-#        grid.addWidget(F, 3, 0)
-#        grid.addWidget(self.FEdit1, 3, 1, 1, 1)
-#        grid.addWidget(self.FEdit2, 3, 2, 1, 1)
-#        grid.addWidget(G, 3, 3)
-#        grid.addWidget(self.GEdit1, 3, 4)
-#        grid.addWidget(self.GEdit2, 3, 5)
-#        grid.addWidget(self.FEdit3, 4, 1, 1, 1)
-#        grid.addWidget(self.FEdit4, 4, 2, 1, 1)
-        grid.addWidget(distNoise, 5, 0)
-        grid.addWidget(self.distNoiseEdit, 5, 1)
-        grid.addWidget(measNoise, 5, 2)
-        grid.addWidget(self.measNoiseEdit, 5, 3)
-        grid.addWidget(AccelNoise, 5, 4)
-        grid.addWidget(self.AccelNoiseEdit, 5, 5)
-        grid.addWidget(inputSignal, 6, 0)
-        grid.addWidget(self.inputSignalEdit, 6, 1)
-        
         # Horizontal Buttons Layout
-        self.b1 = QPushButton('Run')
-        self.b2 = QPushButton('Clear')
+        self.b1 = QPushButton('Position Tracking')
+        self.b2 = QPushButton('Velocity Tracking')
+        self.b3 = QPushButton('Clear')
         
+        # Plot window
+        Graph = QHBoxLayout()
+        Graph.addWidget(self.plot)
+        
+        # Run and clear buttons        
         Buttons = QHBoxLayout()
         Buttons.addWidget(self.b1)
         Buttons.addWidget(self.b2)
-        Buttons.addStretch(1)
+        Buttons.addWidget(self.b3)
         
+        # Time parameter        
         TimeLayout = QHBoxLayout()
         TimeLayout.addWidget(TimeStep)
         TimeLayout.addWidget(self.dtEdit)
@@ -181,8 +145,8 @@ class MainWindow(QMainWindow) :
         TimeLayout.addWidget(SimLen)
         TimeLayout.addWidget(self.simEdit)
         TimeLayout.addWidget(unit1)
-        TimeLayout.addStretch(1)
-        
+
+        # System parameter        
         SysParam = QHBoxLayout()
         SysParam.addWidget(mass)
         SysParam.addWidget(self.massEdit)
@@ -193,133 +157,86 @@ class MainWindow(QMainWindow) :
         SysParam.addWidget(Kd)
         SysParam.addWidget(self.KdEdit)
         SysParam.addWidget(unitKd)
-        SysParam.addStretch(1)
         
+        # State space        
         States = QHBoxLayout()
         States.addLayout(FGrid)
-        States.addLayout(GGrid)        
+        States.addLayout(GGrid)
         States.addStretch(1)
         
-        # GUI Layout
-        layout = QVBoxLayout()
-        layout.addLayout(TimeLayout)
-        layout.addLayout(SysParam)
-        layout.addLayout(States)
-        layout.addLayout(Buttons)
-        layout.addStretch(1)
-        layout2 = QHBoxLayout()
-        layout2.addWidget(self.plot)
-        layout2.addLayout(layout)
-#        layout.addWidget(self.output)
+        # Noise parameter        
+        NoiseParam1 = QHBoxLayout()
+        NoiseParam1.addWidget(distNoise)
+        NoiseParam1.addWidget(self.distNoiseEdit)
+        NoiseParam1.addStretch()
+        NoiseParam2 = QHBoxLayout()
+        NoiseParam2.addWidget(measNoise)
+        NoiseParam2.addWidget(self.measNoiseEdit)
+        NoiseParam2.addStretch()
+        NoiseParam3 = QHBoxLayout()
+        NoiseParam3.addWidget(AccelNoise)
+        NoiseParam3.addWidget(self.AccelNoiseEdit)
+        NoiseParam3.addStretch(1)
+
+        InputParam = QHBoxLayout()
+        InputParam.addWidget(inputSignal)
+        InputParam.addWidget(self.inputSignalEdit)
         
-        self.widget.setLayout(layout2)
-        self.setCentralWidget(self.widget)      
+        # Vertical layouts
+        layoutV = QVBoxLayout()
+        layoutV.addLayout(TimeLayout)
+        layoutV.addLayout(SysParam)
+        layoutV.addLayout(States)
+        layoutV.addLayout(NoiseParam1)
+        layoutV.addLayout(NoiseParam2)
+        layoutV.addLayout(NoiseParam3)
+        layoutV.addLayout(InputParam)
+        layoutV.addLayout(Buttons)
+        layoutV.addStretch(1)
+        
+        # Fianl GUI Layout        
+        layout = QHBoxLayout()
+        layout.addLayout(Graph, 5)
+        layout.addLayout(layoutV, 1)
+        self.widget.setLayout(layout)
+        self.setCentralWidget(self.widget)
 
         # Signals:
         # Pressing Enter returns Output
-        self.paramEdit.returnPressed.connect(self.runButton)
+        self.paramEdit.returnPressed.connect(self.runButton1)
         # Button clicks to run and clear
-        self.b1.clicked.connect(self.runButton)
-        self.b2.clicked.connect(self.clearPlot)      
+        self.b1.clicked.connect(self.runButton1)
+        self.b2.clicked.connect(self.runButton2)
+        self.b3.clicked.connect(self.clearPlot)
 
-    def kalmanfilter(self):
+    def kalmanfilterInit(self, mode=1):
         """
         """
-        m = self.massEdit.text()
-        Ks = self.KsEdit.text()
-        Kd = self.KdEdit.text()
-        F1 = self.FEdit1.text()
-        F2 = self.FEdit2.text()
-        F3 = self.FEdit3.text()
-        F4 = self.FEdit4.text()
-        G1 = self.GEdit1.text()
-        G2 = self.GEdit2.text()
-        dt = self.dtEdit.text()
-        time = self.simEdit.text()
-        m = eval(m)
-        Ks = eval(Ks)
-        Kd = eval(Kd)
-        F1 = eval(F1)
-        F2 = eval(F2)
-        F3 = eval(F3)
-        F4 = eval(F4)
-        G1 = eval(G1)
-        G2 = eval(G2)
-        dt = eval(dt)
-        time = eval(time)
+#        mode = 1
+        m = eval(self.massEdit.text())
+        Ks = eval(self.KsEdit.text())
+        Kd = eval(self.KdEdit.text())
+        F1 = eval(self.FEdit1.text())
+        F2 = eval(self.FEdit2.text())
+        F3 = eval(self.FEdit3.text())
+        F4 = eval(self.FEdit4.text())
+        G1 = eval(self.GEdit1.text())
+        G2 = eval(self.GEdit2.text())
+        dt = eval(self.dtEdit.text())
+        time = eval(self.simEdit.text())
         
-        F = np.array([[F1, F2], [F3, F4]])
-        G = np.array([[G1], [G2]])
-        H = np.array([1.0, 0.0])
-        J = 0
-        sysc = control.ss(F,G,H,J)
-                
-        # initialize simulations and Kalman Filter
-        tf = max(time, floor(1000*dt))
-        n = 0
-        t = np.zeros((int(tf/dt),1))
-        for i in np.arange(0,tf,dt):
-            t[n] = i
-            n+=1
-        nSteps = len(t)
-        Qc2 = self.AccelNoiseEdit.text()
-        Qc2 = eval(Qc2)
-        Qd2 = Qc2/dt
-        w = np.sqrt(Qd2)*np.random.randn(nSteps,1)
-        R = self.measNoiseEdit.text()
-        R = eval(R)
-        v = np.sqrt(R)*np.random.randn(nSteps,1)
-        X0 = [0.25, 0]
-        sysd = control.c2d(sysc,dt)
-        [Phi,Gamma,H,J] = control.ssdata(sysd)
-        K = np.zeros((2,nSteps))
-        xp = np.zeros((2,nSteps))
-        Pp = np.identity(2)
-        xp[:,0]=[0, 0]
-        
-        # initialize INS/GPS
-        Fi = np.array([[0.0, 1.0],[0.0, 0.0]])
-        Gi = np.array([[0],[1]])
-        Hi = H*1
-        Ji = 0
-        Qdi2 = self.AccelNoiseEdit.text()
-        Qdi2 = eval(Qdi2)
-        Qdi2 = Qdi2*Qdi2
-        wi = np.sqrt(Qdi2)*np.random.randn(nSteps,1)
-        Ri = R*1
-        sysdi = control.c2d(control.ss(Fi,Gi,Hi,Ji),dt)
-        Phii, Gammai, Hi, Ji = control.ssdata(sysdi)
-        Ki = K*1
-        xpi = xp*1
-        Ppi = Pp*1
-        
-        u = self.inputSignalEdit.text()
-        u = eval(u)
-        u = u.T
-        yt, t, xt = matlab.lsim(sysc, w+u.T, t, X0)
-        xt = xt.T
-        y = yt+v
-        
-        accel = np.array([0, 1])@(F@xt + G*(u+np.transpose(w)))
-        accelmeas = accel + np.transpose(wi)
-        for k in range(1, nSteps):
-            xm = Phi@xp[:,[(k-1)]] + Gamma*u[:,k-1]
-            Pm = Phi@Pp@np.transpose(Phi) + Gamma*Qd2*np.transpose(Gamma)
+        self.m = m
+        self.Ks = Ks
+        self.Kd = Kd
+        self.F1 = F1
+        self.F2 = F2
+        self.F3 = F3
+        self.F4 = F4
+        self.G1 = G1
+        self.G2 = G2
+        self.dt = dt
+        self.time = time            
             
-            K[:,[k]] = Pm@np.transpose(H)*np.linalg.inv(H@Pm@np.transpose(H) + R)
-            xp[:,[k]] = xm + K[:,[k]]*(y[0,k]-H*xm)
-            Pp = Pm - K[:,[k]]@H@Pm
-            
-            # INS/GPS Filtering
-            xmi = Phii@xpi[:,[(k-1)]] + Gammai*accelmeas[:, k-1]
-            Pmi = Phii@Ppi@np.transpose(Phii) + Gammai*Qdi2*np.transpose(Gammai)
-            
-            Ki[:,[k]] = Pmi@np.transpose(Hi)*np.linalg.inv(Hi@Pmi@np.transpose(Hi) + Ri)
-            xpi[:,[k]] = xmi + Ki[:,[k]]*(y[0,k]-Hi*xmi)
-            Ppi = Pmi - Ki[:,[k]]@Hi@Pmi
-        
-        self.plot.redraw(t, yt, t, xpi[0,:])
-
     def saveas(self):
         """Save input and output to a text file as seperate columns
         """
@@ -345,9 +262,19 @@ class MainWindow(QMainWindow) :
             (platform.python_version(),
              QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
         
-    def runButton(self):
+    def runButton1(self):
+        kf = np.array(KalmanFilter().kalmanfilter(mode=1))
         try:
-            self.kalmanfilter()
+            self.plot.redraw(kf[0], kf[1], kf[2], kf[3])
+
+        except:
+            self.output.setText(
+                    "Input error! Check your input parameters and function.")
+        
+    def runButton2(self):
+        kf = np.array(KalmanFilter().kalmanfilter(mode=2))
+        try:
+            self.plot.redraw(kf[0], kf[1], kf[2], kf[3])
 
         except:
             self.output.setText(
@@ -356,7 +283,91 @@ class MainWindow(QMainWindow) :
     def clearPlot(self):
         self.plot.clear()
         self.output.setText("Output Values")            
+
+class KalmanFilter(MainWindow):
+    def __init__(self):
+        super().__init__()
         
+    def kalmanfilter(self, mode):
+        super().kalmanfilterInit()
+        
+        self.plot = MatplotlibCanvas()
+        
+        F = np.array([[self.F1, self.F2], [self.F3, self.F4]])
+        G = np.array([[self.G1], [self.G2]])
+        H = np.array([1.0, 0.0])
+        J = 0
+        sysc = control.ss(F,G,H,J)
+                
+        # initialize simulations and Kalman Filter
+        tf = max(self.time, floor(1000*self.dt))
+        n = 0
+        t = np.zeros((int(tf/self.dt),1))
+        for i in np.arange(0,tf,self.dt):
+            t[n] = i
+            n += 1
+        nSteps = len(t)
+        Qc2 = eval(self.AccelNoiseEdit.text())
+        Qd2 = Qc2/self.dt
+        w = np.sqrt(Qd2)*np.random.randn(nSteps,1)
+        R = eval(self.measNoiseEdit.text())
+        v = np.sqrt(R)*np.random.randn(nSteps,1)
+        X0 = [0.25, 0]
+        sysd = control.c2d(sysc,self.dt)
+        [Phi, Gamma, H, J] = control.ssdata(sysd)
+        K = np.zeros((2,nSteps))
+        xp = np.zeros((2,nSteps))
+        Pp = np.identity(2)
+        xp[:,0]=[0, 0]
+        
+        # initialize INS/GPS
+        Fi = np.array([[0.0, 1.0],[0.0, 0.0]])
+        Gi = np.array([[0],[1]])
+        Hi = H*1
+        Ji = 0
+        Qdi2 = eval(self.AccelNoiseEdit.text())
+        Qdi2 = Qdi2*Qdi2
+        wi = np.sqrt(Qdi2)*np.random.randn(nSteps,1)
+        Ri = R*1
+        sysdi = control.c2d(control.ss(Fi,Gi,Hi,Ji),self.dt)
+        [Phii, Gammai, Hi, Ji] = control.ssdata(sysdi)
+        Ki = K*1
+        xpi = xp*1
+        Ppi = Pp*1
+        
+        u = eval(self.inputSignalEdit.text())
+        u = 1*u.T
+        yt, t, xt = matlab.lsim(sysc, u.T+w, t, X0) # simulate with input noise
+        xt = xt.T
+        y = yt+v
+        
+        accel = np.array([0, 1])@(F@xt + G*(u+w.T))
+        accelmeas = accel + wi.T
+        
+        for k in range(1, nSteps):
+            # MSD Filtering
+            xm = Phi@xp[:,[(k-1)]] + Gamma*u[:,k-1]
+            Pm = Phi@Pp@Phi.T + Gamma*Qd2*Gamma.T
+            
+            K[:,[k]] = Pm@H.T*np.linalg.inv(H@Pm@H.T + R) # Kalman gain K
+            xp[:,[k]] = xm + K[:,[k]]*(y[0,k]-H*xm)
+            Pp = Pm - K[:,[k]]@H@Pm
+            
+            # INS/GPS Filtering
+            xmi = Phii@xpi[:,[(k-1)]] + Gammai*accelmeas[:, k-1]
+            Pmi = Phii@Ppi@Phii.T + Gammai*Qdi2*Gammai.T
+            
+            Ki[:,[k]] = Pmi@Hi.T*np.linalg.inv(Hi@Pmi@Hi.T + Ri)    
+            xpi[:,[k]] = xmi + Ki[:,[k]]*(y[0,k]-Hi*xmi)
+            Ppi = Pmi - Ki[:,[k]]@Hi@Pmi
+        
+        if mode == 1:
+            return(t, yt, t, xpi[0,:])
+        elif mode == 2:
+            return(t, xp[1,:], t, xp[1,:])
+#            self.plot.redraw(t, accel[0:], t, accelmeas[0:].T)
+
+
 
 class MatplotlibCanvas(FigureCanvas):
     """ This is borrowed heavily from the matplotlib documentation;
@@ -392,6 +403,7 @@ class MatplotlibCanvas(FigureCanvas):
         self.axes.clear()
         self.axes.set_title('Kalman Filter Simulation')
         self.axes.plot(x, y, u, v)
+#        ani = animation.FuncAnimation(self.fig, )
         self.draw()
         
     def clear(self):
@@ -401,6 +413,6 @@ class MatplotlibCanvas(FigureCanvas):
         
 app = QApplication(sys.argv)
 form = MainWindow()
-form.resize(950, 700)
+form.resize(1000, 100)
 form.show()
 app.exec_()

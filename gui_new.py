@@ -12,16 +12,17 @@ import numpy as np # this has to be imported before the ones in line 11 and 12
 from math import floor
 import control
 import control.matlab as matlab
-import matplotlib.animation as animation
+#import matplotlib.animation as animation
 
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QDialog, QLineEdit, 
                              QVBoxLayout, QAction, QMessageBox, QFileDialog,
-                             QSizePolicy, QComboBox, QPushButton, QHBoxLayout,
-                             QGridLayout, QLabel)
+                             QSizePolicy, QPushButton, QHBoxLayout, QLabel,
+                             QGridLayout)
 from PyQt5.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt5.QtGui import QIcon
 
 from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.figure import Figure 
 
 class MainWindow(QMainWindow) :
@@ -56,6 +57,8 @@ class MainWindow(QMainWindow) :
 
         self.widget = QDialog()
         self.plot = MatplotlibCanvas()
+        self.toolbar = NavigationToolbar2QT(self.plot, self)
+        self.toolbar.hide()
         
         # Input and Output Boxes
         self.paramEdit = QLineEdit("np.linspace(0,10,11)")
@@ -127,15 +130,31 @@ class MainWindow(QMainWindow) :
         self.b2 = QPushButton('Velocity Tracking')
         self.b3 = QPushButton('Clear')
         
+        # Horizontal Plot Toolbar
+        self.b4 = QPushButton('Zoom')
+        self.b5 = QPushButton('Pan')
+        self.b6 = QPushButton('Home')
+        
         # Plot window
-        Graph = QHBoxLayout()
+        Graph = QVBoxLayout()
         Graph.addWidget(self.plot)
+        
+        # Plot Toolbar
+        PlotButtons = QHBoxLayout()
+        PlotButtons.addWidget(self.b6)
+        PlotButtons.addWidget(self.b4)
+        PlotButtons.addWidget(self.b5)
         
         # Run and clear buttons        
         Buttons = QHBoxLayout()
         Buttons.addWidget(self.b1)
         Buttons.addWidget(self.b2)
         Buttons.addWidget(self.b3)
+        
+        # Buttons and Toolbar
+        Button = QVBoxLayout()
+        Button.addLayout(Buttons)
+        Button.addLayout(PlotButtons)
         
         # Time parameter        
         TimeLayout = QHBoxLayout()
@@ -191,7 +210,7 @@ class MainWindow(QMainWindow) :
         layoutV.addLayout(NoiseParam2)
         layoutV.addLayout(NoiseParam3)
         layoutV.addLayout(InputParam)
-        layoutV.addLayout(Buttons)
+        layoutV.addLayout(Button)
         layoutV.addStretch(1)
         
         # Fianl GUI Layout        
@@ -208,11 +227,22 @@ class MainWindow(QMainWindow) :
         self.b1.clicked.connect(self.runButton1)
         self.b2.clicked.connect(self.runButton2)
         self.b3.clicked.connect(self.clearPlot)
+        self.b4.clicked.connect(self.zoom)
+        self.b5.clicked.connect(self.pan)
+        self.b6.clicked.connect(self.home)
+        
+    def zoom(self):
+        self.toolbar.zoom()
+    
+    def pan(self):
+        self.toolbar.pan()
+        
+    def home(self):
+        self.toolbar.home()
 
     def kalmanfilterInit(self, mode=1):
         """
         """
-#        mode = 1
         m = eval(self.massEdit.text())
         Ks = eval(self.KsEdit.text())
         Kd = eval(self.KdEdit.text())
@@ -235,63 +265,7 @@ class MainWindow(QMainWindow) :
         self.G1 = G1
         self.G2 = G2
         self.dt = dt
-        self.time = time            
-            
-    def saveas(self):
-        """Save input and output to a text file as seperate columns
-        """
-        
-        name = QFileDialog.getSaveFileName(self, "saveas")[0]
-        f = open(name, 'w')
-        x = self.paramEdit.text()
-        x = eval(x)
-        if len(x) > 1 :
-            x = np.array(x)
-        output = eval(str(self.funcEdit.currentText()))
-        f.write("  x    f(x)\n")
-        for i in range(len(x)):
-            f.write("%5.2f %5.2f\n" % (x[i], output[i]))
-        f.close()
-                
-    def about(self):
-        QMessageBox.about(self, 
-            "About Function Evaluator",
-            """<b>Function Evaluator</b>
-               <p>Copyright &copy; 2016 Jeremy Roberts, All Rights Reserved.
-               <p>Python %s -- Qt %s -- PyQt %s on %s""" %
-            (platform.python_version(),
-             QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
-        
-    def runButton1(self):
-        kf = np.array(KalmanFilter().kalmanfilter(mode=1))
-        try:
-            self.plot.redraw(kf[0], kf[1], kf[2], kf[3])
-
-        except:
-            self.output.setText(
-                    "Input error! Check your input parameters and function.")
-        
-    def runButton2(self):
-        kf = np.array(KalmanFilter().kalmanfilter(mode=2))
-        try:
-            self.plot.redraw(kf[0], kf[1], kf[2], kf[3])
-
-        except:
-            self.output.setText(
-                    "Input error! Check your input parameters and function.")
-        
-    def clearPlot(self):
-        self.plot.clear()
-        self.output.setText("Output Values")            
-
-class KalmanFilter(MainWindow):
-    def __init__(self):
-        super().__init__()
-        
-    def kalmanfilter(self, mode):
-        super().kalmanfilterInit()
-        
-        self.plot = MatplotlibCanvas()
+        self.time = time        
         
         F = np.array([[self.F1, self.F2], [self.F3, self.F4]])
         G = np.array([[self.G1], [self.G2]])
@@ -361,12 +335,57 @@ class KalmanFilter(MainWindow):
             xpi[:,[k]] = xmi + Ki[:,[k]]*(y[0,k]-Hi*xmi)
             Ppi = Pmi - Ki[:,[k]]@Hi@Pmi
         
-        if mode == 1:
-            return(t, yt, t, xpi[0,:])
-        elif mode == 2:
-            return(t, xp[1,:], t, xp[1,:])
-#            self.plot.redraw(t, accel[0:], t, accelmeas[0:].T)
+        if mode == 1: # returns position, estimate, and INS/GPS estimate
+            return(t, xt[0,:], t, xp[0,:], t, xpi[0,:])
+        elif mode == 2: # returns velocity
+            return(t, xt[1,:], t, xp[1,:], t, xpi[1,:])
+            
+    def saveas(self):
+        """Save input and output to a text file as seperate columns
+        """
+        
+        name = QFileDialog.getSaveFileName(self, "saveas")[0]
+        f = open(name, 'w')
+        x = self.paramEdit.text()
+        x = eval(x)
+        if len(x) > 1 :
+            x = np.array(x)
+        output = eval(str(self.funcEdit.currentText()))
+        f.write("  x    f(x)\n")
+        for i in range(len(x)):
+            f.write("%5.2f %5.2f\n" % (x[i], output[i]))
+        f.close()
+                
+    def about(self):
+        QMessageBox.about(self, 
+            "About Function Evaluator",
+            """<b>Function Evaluator</b>
+               <p>Copyright &copy; 2016 Jeremy Roberts, All Rights Reserved.
+               <p>Python %s -- Qt %s -- PyQt %s on %s""" %
+            (platform.python_version(),
+             QT_VERSION_STR, PYQT_VERSION_STR, platform.system()))
+        
+    def runButton1(self):
+        kf = self.kalmanfilterInit()
+        try:
+            self.plot.redraw(kf[0], kf[1], kf[2], kf[3], kf[4], kf[5])
 
+        except:
+            self.output.setText(
+                    "Input error! Check your input parameters and function.")
+        
+    def runButton2(self):
+        kf = self.kalmanfilterInit(mode=2)
+        try:
+            self.plot.redraw(kf[0], kf[1], kf[2], kf[3], kf[4], kf[5])
+
+        except:
+            self.output.setText(
+                    "Input error! Check your input parameters and function.")
+        
+    def clearPlot(self):
+        self.plot.clear()
+        self.output.setText("Output Values")            
 
 
 class MatplotlibCanvas(FigureCanvas):
@@ -385,7 +404,7 @@ class MatplotlibCanvas(FigureCanvas):
         y = 0
         self.axes.plot(x, y)
         self.axes.set_xlabel('Time (s)')
-        self.axes.set_ylabel('y(x)')
+        self.axes.set_ylabel('Position (x)')
         self.axes.set_title('Kalman Filter Simulation')
         
         # Now do the initialization of the super class
@@ -396,23 +415,28 @@ class MatplotlibCanvas(FigureCanvas):
                                    QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         
-    def redraw(self, x, y, u, v):
+    def redraw(self, x, y, u, v, i, j): # plots position vs time
         """ Redraw the figure with new x and y values.
         """
         # clear the old image (axes.hold is deprecated)
         self.axes.clear()
         self.axes.set_title('Kalman Filter Simulation')
-        self.axes.plot(x, y, u, v)
-#        ani = animation.FuncAnimation(self.fig, )
+        self.axes.plot(x, y, '--', label='True Position')
+        self.axes.plot(u, v, '*', label='MSD Kalman Estimate')
+        self.axes.plot(i, j, label='INS/GPS Estimate')
+        self.axes.set_xlabel('Time (s)')
+        self.axes.set_ylabel('Position (m)')
+        self.axes.legend()
         self.draw()
         
     def clear(self):
         self.axes.clear()
-        self.axes.set_title('Kalman Filter Simulation') 
+        self.axes.set_title('Kalman Filter Simulation')
+        self.axes.set_xlabel('Time (s)')
         self.draw()
         
 app = QApplication(sys.argv)
 form = MainWindow()
-form.resize(1000, 100)
+form.resize(1000, 300)
 form.show()
 app.exec_()

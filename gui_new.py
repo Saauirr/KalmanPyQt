@@ -17,9 +17,9 @@ import control.matlab as matlab
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QDialog, QLineEdit, 
                              QVBoxLayout, QAction, QMessageBox, QFileDialog,
                              QSizePolicy, QPushButton, QHBoxLayout, QLabel,
-                             QGridLayout)
-from PyQt5.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
-from PyQt5.QtGui import QIcon
+                             QGridLayout, QShortcut)
+from PyQt5.QtCore import QT_VERSION_STR, PYQT_VERSION_STR, Qt
+from PyQt5.QtGui import QIcon, QKeySequence
 
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -32,6 +32,24 @@ class MainWindow(QMainWindow) :
         
         # Add an Icon
         self.setWindowIcon(QIcon('guiIcon.png'))
+        
+        # Add Shortcuts
+        self.shortPlot1 = QShortcut(QKeySequence('Ctrl+p'), self)
+        self.shortPlot1.activated.connect(self.runButton1)
+        self.shortPlot2 = QShortcut(QKeySequence('Ctrl+v'), self)
+        self.shortPlot2.activated.connect(self.runButton2)
+        self.shortPlot3 = QShortcut(QKeySequence('Ctrl+c'), self)
+        self.shortPlot3.activated.connect(self.clearPlot)
+        self.shortPlot4 = QShortcut(QKeySequence('Ctrl+z'), self)
+        self.shortPlot4.activated.connect(self.zoom)
+        self.shortPlot5 = QShortcut(QKeySequence('Ctrl+a'), self)
+        self.shortPlot5.activated.connect(self.pan)
+        self.shortPlot6 = QShortcut(QKeySequence('Ctrl+h'), self)
+        self.shortPlot6.activated.connect(self.home)
+        self.shortSave = QShortcut(QKeySequence('Ctrl+s'), self)
+        self.shortSave.activated.connect(self.saveas)
+        self.shortClose = QShortcut(QKeySequence('Ctrl+w'), self)
+        self.shortClose.activated.connect(self.close)
 
         #######################################################################
         # ADD MENU ITEMS
@@ -50,7 +68,7 @@ class MainWindow(QMainWindow) :
         self.actionAbout = QAction("&About",self)
         self.actionAbout.triggered.connect(self.about)
         self.menuHelp.addActions([self.actionAbout])
-        
+
         #######################################################################
         # CREATE CENTRAL WIDGET
         #######################################################################
@@ -73,7 +91,7 @@ class MainWindow(QMainWindow) :
         self.dtEdit.setFixedWidth(50)
         self.simEdit = QLineEdit('20')
         self.simEdit.setFixedWidth(50)
-        
+
         # System Parameter
         mass = QLabel('Mass =')
         Ks = QLabel('Ks =')
@@ -111,7 +129,19 @@ class MainWindow(QMainWindow) :
         GGrid.addWidget(G, 3, 3)
         GGrid.addWidget(self.GEdit1, 3, 4)
         GGrid.addWidget(self.GEdit2, 4, 4)
-
+        
+        # Initial Condition
+        InitCond = QGridLayout()
+        IC = QLabel('      I.C. X0 =')
+        self.ICEdit1, self.ICEdit2 = QLineEdit('0.25'), QLineEdit('0.0')
+        self.ICEdit1.setFixedWidth(40)
+        self.ICEdit2.setFixedWidth(40)
+        InitCond.addWidget(IC, 3, 5)
+        InitCond.addWidget(self.ICEdit1, 3, 6)
+        InitCond.addWidget(self.ICEdit2, 3, 7)
+        InitCond.setAlignment(Qt.AlignTop)
+        
+        # Noise Parameter
         distNoise = QLabel('  Disturbance Cov. =')
         self.distNoiseEdit = QLineEdit('0.0005')
         self.distNoiseEdit.setFixedWidth(80)
@@ -122,18 +152,20 @@ class MainWindow(QMainWindow) :
         measNoise = QLabel('          Meas. Noise =')
         self.measNoiseEdit = QLineEdit('0.001')
         self.measNoiseEdit.setFixedWidth(80)
+        
+        # Input Signal
         inputSignal = QLabel('Input Signal =')
         self.inputSignalEdit = QLineEdit('10*np.sin(2*np.pi*0.05*t)')
 
         # Horizontal Buttons Layout
-        self.b1 = QPushButton('Position Tracking')
-        self.b2 = QPushButton('Velocity Tracking')
-        self.b3 = QPushButton('Clear')
+        self.b1 = QPushButton('&Position Tracking')
+        self.b2 = QPushButton('&Velocity Tracking')
+        self.b3 = QPushButton('&Clear')
         
         # Horizontal Plot Toolbar
-        self.b4 = QPushButton('Zoom')
-        self.b5 = QPushButton('Pan')
-        self.b6 = QPushButton('Home')
+        self.b4 = QPushButton('&Zoom')
+        self.b5 = QPushButton('P&an')
+        self.b6 = QPushButton('&Home')
         
         # Plot window
         Graph = QVBoxLayout()
@@ -177,10 +209,11 @@ class MainWindow(QMainWindow) :
         SysParam.addWidget(self.KdEdit)
         SysParam.addWidget(unitKd)
         
-        # State space        
+        # Grid layouts   
         States = QHBoxLayout()
         States.addLayout(FGrid)
         States.addLayout(GGrid)
+        States.addLayout(InitCond)
         States.addStretch(1)
         
         # Noise parameter        
@@ -230,7 +263,8 @@ class MainWindow(QMainWindow) :
         self.b4.clicked.connect(self.zoom)
         self.b5.clicked.connect(self.pan)
         self.b6.clicked.connect(self.home)
-        
+    
+    # Plot Toolbar functions
     def zoom(self):
         self.toolbar.zoom()
     
@@ -252,6 +286,8 @@ class MainWindow(QMainWindow) :
         F4 = eval(self.FEdit4.text())
         G1 = eval(self.GEdit1.text())
         G2 = eval(self.GEdit2.text())
+        X0_0 = eval(self.ICEdit1.text())
+        X0_1 = eval(self.ICEdit2.text())
         dt = eval(self.dtEdit.text())
         time = eval(self.simEdit.text())
         
@@ -264,6 +300,7 @@ class MainWindow(QMainWindow) :
         self.F4 = F4
         self.G1 = G1
         self.G2 = G2
+        self.X0 = [X0_0, X0_1]
         self.dt = dt
         self.time = time        
         
@@ -286,7 +323,6 @@ class MainWindow(QMainWindow) :
         w = np.sqrt(Qd2)*np.random.randn(nSteps,1)
         R = eval(self.measNoiseEdit.text())
         v = np.sqrt(R)*np.random.randn(nSteps,1)
-        X0 = [0.25, 0]
         sysd = control.c2d(sysc,self.dt)
         [Phi, Gamma, H, J] = control.ssdata(sysd)
         K = np.zeros((2,nSteps))
@@ -311,7 +347,7 @@ class MainWindow(QMainWindow) :
         
         u = eval(self.inputSignalEdit.text())
         u = 1*u.T
-        yt, t, xt = matlab.lsim(sysc, u.T+w, t, X0) # simulate with input noise
+        yt, t, xt = matlab.lsim(sysc, u.T+w, t, self.X0) # simulate with input noise
         xt = xt.T
         y = yt+v
         
@@ -343,18 +379,20 @@ class MainWindow(QMainWindow) :
     def saveas(self):
         """Save input and output to a text file as seperate columns
         """
-        
         name = QFileDialog.getSaveFileName(self, "saveas")[0]
         f = open(name, 'w')
-        x = self.paramEdit.text()
-        x = eval(x)
-        if len(x) > 1 :
-            x = np.array(x)
-        output = eval(str(self.funcEdit.currentText()))
-        f.write("  x    f(x)\n")
-        for i in range(len(x)):
-            f.write("%5.2f %5.2f\n" % (x[i], output[i]))
+        out = self.kalmanfilterInit()
+        out = np.array(out)
+        t = out[0]   # time
+        xt = out[1]  # X
+        xp = out[3]  # MSD Estimate
+        xpi = out[5] # INS/GPS Estimate
+        f.write(" Time     X    MSD   INS/GPS\n")
+        for i in range(len(t)):
+            f.write("%5.4f %5.4f %5.4f %5.4f\n" % (t[i], xt[i], xp[i], xpi[i]))
         f.close()
+        
+        self.plot.savePlot()
                 
     def about(self):
         QMessageBox.about(self, 
@@ -368,20 +406,18 @@ class MainWindow(QMainWindow) :
     def runButton1(self):
         kf = self.kalmanfilterInit()
         try:
-            self.plot.redraw(kf[0], kf[1], kf[2], kf[3], kf[4], kf[5])
+            self.plot.redraw(kf[0], kf[1], kf[2], kf[3], kf[4], kf[5], 1)
 
         except:
-            self.output.setText(
-                    "Input error! Check your input parameters and function.")
+            print('Input Error! Check the input')
         
     def runButton2(self):
         kf = self.kalmanfilterInit(mode=2)
         try:
-            self.plot.redraw(kf[0], kf[1], kf[2], kf[3], kf[4], kf[5])
+            self.plot.redraw(kf[0], kf[1], kf[2], kf[3], kf[4], kf[5], 2)
 
         except:
-            self.output.setText(
-                    "Input error! Check your input parameters and function.")
+            print('Input Error! Check the input')
         
     def clearPlot(self):
         self.plot.clear()
@@ -404,7 +440,6 @@ class MatplotlibCanvas(FigureCanvas):
         y = 0
         self.axes.plot(x, y)
         self.axes.set_xlabel('Time (s)')
-        self.axes.set_ylabel('Position (x)')
         self.axes.set_title('Kalman Filter Simulation')
         
         # Now do the initialization of the super class
@@ -415,17 +450,24 @@ class MatplotlibCanvas(FigureCanvas):
                                    QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         
-    def redraw(self, x, y, u, v, i, j): # plots position vs time
+    def redraw(self, x, y, u, v, i, j, mode=1): # plots position vs time
         """ Redraw the figure with new x and y values.
         """
         # clear the old image (axes.hold is deprecated)
         self.axes.clear()
-        self.axes.set_title('Kalman Filter Simulation')
-        self.axes.plot(x, y, '--', label='True Position')
-        self.axes.plot(u, v, '*', label='MSD Kalman Estimate')
-        self.axes.plot(i, j, label='INS/GPS Estimate')
         self.axes.set_xlabel('Time (s)')
-        self.axes.set_ylabel('Position (m)')
+        if mode==1:
+            self.axes.set_title('Position: MSD VS. INS/GPS Estimates')
+            self.axes.plot(x, y, '--', label='True Position')
+            self.axes.plot(u, v, '.', label='MSD Kalman Estimate')
+            self.axes.plot(i, j, label='INS/GPS Estimate')
+            self.axes.set_ylabel('Position (m)')
+        elif mode==2:
+            self.axes.set_title('Velocity: MSD VS. INS/GPS Estimates')
+            self.axes.plot(x, y, '--', label='True Position')
+            self.axes.plot(u, v, '.', label='MSD Kalman Estimate')
+            self.axes.plot(i, j, label='INS/GPS Estimate')
+            self.axes.set_ylabel('Velocity (m/s)')            
         self.axes.legend()
         self.draw()
         
@@ -434,6 +476,9 @@ class MatplotlibCanvas(FigureCanvas):
         self.axes.set_title('Kalman Filter Simulation')
         self.axes.set_xlabel('Time (s)')
         self.draw()
+        
+    def savePlot(self):
+        self.fig.savefig('result.png', bbpx_inches='tight')
         
 app = QApplication(sys.argv)
 form = MainWindow()

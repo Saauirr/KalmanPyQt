@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Oct 20 15:11:45 2018
-
-@author: alexk
-"""
-
 import sys
 import platform
 import numpy as np # this has to be imported before the ones in line 11 and 12
@@ -32,6 +24,9 @@ class MainWindow(QMainWindow) :
         
         # Add an Icon
         self.setWindowIcon(QIcon('guiIcon.png'))
+        
+        # Add Window Title
+        self.setWindowTitle('Kalman Filter Simulation')
         
         # Add Shortcuts
         self.shortPlot1 = QShortcut(QKeySequence('Ctrl+p'), self)
@@ -78,9 +73,9 @@ class MainWindow(QMainWindow) :
         self.toolbar = NavigationToolbar2QT(self.plot, self)
         self.toolbar.hide()
         
-        # Input and Output Boxes
-        self.paramEdit = QLineEdit("np.linspace(0,10,11)")
-        self.output = QLineEdit("Output Values")
+        #######################################################################
+        # PARAMETER EDIT BOX
+        #######################################################################
         
         # Horizontal Time entries
         TimeStep = QLabel('Time Step =')
@@ -255,7 +250,7 @@ class MainWindow(QMainWindow) :
 
         # Signals:
         # Pressing Enter returns Output
-        self.paramEdit.returnPressed.connect(self.runButton1)
+        self.inputSignalEdit.returnPressed.connect(self.runButton1)
         # Button clicks to run and clear
         self.b1.clicked.connect(self.runButton1)
         self.b2.clicked.connect(self.runButton2)
@@ -318,7 +313,7 @@ class MainWindow(QMainWindow) :
             t[n] = i
             n += 1
         nSteps = len(t)
-        Qc2 = eval(self.AccelNoiseEdit.text())
+        Qc2 = eval(self.distNoiseEdit.text())
         Qd2 = Qc2/self.dt
         w = np.sqrt(Qd2)*np.random.randn(nSteps,1)
         R = eval(self.measNoiseEdit.text())
@@ -420,8 +415,7 @@ class MainWindow(QMainWindow) :
             print('Input Error! Check the input')
         
     def clearPlot(self):
-        self.plot.clear()
-        self.output.setText("Output Values")            
+        self.plot.clear()        
 
 
 class MatplotlibCanvas(FigureCanvas):
